@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { user } from "../models/user.model.js";
 
+
 // Register
 export const register = async (req, res) => {
     try {
@@ -84,7 +85,7 @@ export const login = async (req, res) => {
 
         // Generate token
         const tokenData = { userId: foundUser._id };
-        const token = jwt.sign(tokenData, process.env.SECRET_KEY, { expiresIn: "1d" });
+        const token = await jwt.sign(tokenData, process.env.SECRET_KEY, { expiresIn: '1d' });
 
         const responseUser = {
             _id: foundUser._id,
@@ -131,43 +132,40 @@ export const logout = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const { fullname, email, phoneNumber, bio, skills } = req.body;
+        const file = req.file; // Assuming file upload middleware is used
 
-        if (!fullname || !email || !phoneNumber || !bio || !skills) {
+        // Validate skills
+        const skillsArray = skills ? skills.split(",").map(skill => skill.trim()) : undefined;
+
+        const userId = req.id; // Middleware should attach authenticated user's ID
+
+        // Find user
+        let foundUser = await user.findById(userId);
+
+        if (!foundUser) {
             return res.status(400).json({
-                message: "Something is missing",
-                success: false
-            });
-        }
-
-        const userId = req.id; // middleware auth
-        const findUser = await user.findById(userId);
-        if (!findUser) {
-            return res.status(404).json({
                 message: "User not found",
                 success: false
             });
         }
 
-        // Process skills as an array
-        const skillsArray = skills.split(",");
-
         // Update user data
-        findUser.fullname = fullname;
-        findUser.email = email;
-        findUser.phoneNumber = phoneNumber;
-        findUser.profile.bio = bio;
-        findUser.profile.skills = skillsArray;
+        if (fullname) foundUser.fullname = fullname;
+        if (email) foundUser.email = email;
+        if (phoneNumber) foundUser.phoneNumber = phoneNumber;
+        if (bio) foundUser.profile.bio = bio;
+        if (skillsArray) foundUser.profile.skills = skillsArray;
 
         // Save updated user
-        await findUser.save();
+        await foundUser.save();
 
         const responseUser = {
-            _id: findUser._id,
-            fullname: findUser.fullname,
-            email: findUser.email,
-            phoneNumber: findUser.phoneNumber,
-            role: findUser.role,
-            profile: findUser.profile
+            _id: foundUser._id,
+            fullname: foundUser.fullname,
+            email: foundUser.email,
+            phoneNumber: foundUser.phoneNumber,
+            role: foundUser.role,
+            profile: foundUser.profile
         };
 
         return res.status(200).json({
