@@ -16,7 +16,7 @@ export const postJob = async (req, res) => {
         const job = await Job.create({
             title,
             description,
-            requirements: requirements.split(","),
+            requirements: Array.isArray(requirements) ? requirements : requirements.split(","),
             salary: Number(salary),
             location,
             jobType,
@@ -42,13 +42,13 @@ export const getAllJobs = async (req, res) => {
         const keywords = req.query.keyword || "";
         const query = {
             $or: [
-                { title: { $regex: keyword, $options: "i" } },
-                { description: { $regex: keyword, $options: "i" } },
+                { title: { $regex: keywords, $options: "i" } },
+                { description: { $regex: keywords, $options: "i" } },
             ]
         }
         const jobs = await Job.find(query);
         if (!jobs) {
-            return res.stauts(404).json({
+            return res.status(404).json({
                 message: "Job not Found",
                 success: false
             })
@@ -92,9 +92,9 @@ export const getJobById = async (req, res) => {
 export const getAdminJobs = async (req, res) => {
     try {
         const adminId = req.id;
-        const jobs = await Job.find({ created_by: adminId })
+        const jobs = await Job.find({ createdBy: adminId });
         if (!jobs) {
-            return res.stauts(404).json({
+            return res.status(404).json({
                 message: "Job not Found",
                 success: false
             })
