@@ -5,7 +5,7 @@ export const postJob = async (req, res) => {
         const { title, description, requirements, salary, location, jobType, experience, position, companyId } = req.body;
         const userId = req.id;
 
-
+        // Check for missing fields
         if (!title || !description || !requirements || !salary || !location || !jobType || !experience || !position || !companyId) {
             return res.status(400).json({
                 message: "Something is missing",
@@ -16,22 +16,26 @@ export const postJob = async (req, res) => {
         const job = await Job.create({
             title,
             description,
-            requirements: Array.isArray(requirements) ? requirements : requirements.split(","),
-            salary: Number(salary),
+            requirements: Array.isArray(requirements)
+                ? requirements.map(req => req.trim())
+                : requirements.split(",").map(req => req.trim()), // Ensure array of strings
+            salary: Number(salary), // Convert salary to number
             location,
             jobType,
-            experienceLevel: experience,
-            position,
+            experienceLevel: Number(experience), // Convert experience to number
+            position: Number(position), // Convert position to number
             company: companyId,
-            createdBy: userId
+            created_by: userId // Correctly mapped to match the schema
         });
 
         return res.status(201).json({
             message: "New Job Created Successfully",
+            job,
             success: true,
         });
     } catch (error) {
         console.log(error);
+
     }
 };
 
@@ -46,7 +50,9 @@ export const getAllJobs = async (req, res) => {
                 { description: { $regex: keywords, $options: "i" } },
             ]
         }
-        const jobs = await Job.find(query);
+        const jobs = await Job.find(query).populate({
+            path:"company"
+        }).sort({createdAt:-1});
         if (!jobs) {
             return res.status(404).json({
                 message: "Job not Found",
